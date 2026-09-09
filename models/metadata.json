@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 {
     "selected_model": "RandomForest",
     "is_xgb": false,
@@ -65,72 +64,4 @@
         "kurtosis": 0.026458694788575546,
         "skew": 0.02769766866521668
     }
-=======
-{
-    "selected_model": "RandomForest",
-    "is_xgb": false,
-    "feature_names": [
-        "rated_current_A",
-        "rms_line_A",
-        "rms_neutral_A",
-        "over_rated_ratio",
-        "peak_A",
-        "crest_factor",
-        "thd_pct",
-        "h3_ratio",
-        "h5_ratio",
-        "h7_ratio",
-        "h9_ratio",
-        "hf_band_energy_1p5_2p5kHz",
-        "di_dt_max_A_per_s",
-        "zero_crossing_noise_std",
-        "leakage_rms_A",
-        "kurtosis",
-        "skew"
-    ],
-    "classes": [
-        "arc_fault_parallel",
-        "arc_fault_series",
-        "ground_fault_leakage",
-        "harmonic_distortion",
-        "normal",
-        "overcurrent_overload",
-        "short_circuit"
-    ],
-    "label_mapping": {
-        "arc_fault_parallel": 0,
-        "arc_fault_series": 1,
-        "ground_fault_leakage": 2,
-        "harmonic_distortion": 3,
-        "normal": 4,
-        "overcurrent_overload": 5,
-        "short_circuit": 6
-    },
-    "metrics": {
-        "validation_macro_f1": 1.0,
-        "test_accuracy": 0.9936708860759493,
-        "test_macro_f1": 0.9935031376891842,
-        "test_weighted_f1": 0.9936676152160404,
-        "test_roc_auc_macro": 1.0
-    },
-    "feature_importances": {
-        "rated_current_A": 0.003376664003049534,
-        "rms_line_A": 0.00529286189142169,
-        "rms_neutral_A": 0.004780512951601043,
-        "over_rated_ratio": 0.12787240043365572,
-        "peak_A": 0.01965458732144782,
-        "crest_factor": 0.10780767947739021,
-        "thd_pct": 0.08180905034203706,
-        "h3_ratio": 0.0692120830541191,
-        "h5_ratio": 0.17366210531774826,
-        "h7_ratio": 0.11131598964693047,
-        "h9_ratio": 0.08726402281540434,
-        "hf_band_energy_1p5_2p5kHz": 0.04057462161910968,
-        "di_dt_max_A_per_s": 0.03843901162695121,
-        "zero_crossing_noise_std": 0.013079315048216075,
-        "leakage_rms_A": 0.06170273099712556,
-        "kurtosis": 0.026458694788575546,
-        "skew": 0.02769766866521668
-    }
->>>>>>> 0f5abe59fe14224d6f2fe87c9f2a03a514e489fd
 }

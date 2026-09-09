@@ -720,6 +720,7 @@ with tab_main:
     c1, c2, c3, c4, c5, c6 = st.columns(6)
 
     with c1:
+        frequency_hz=50.0
         st.markdown(
             f"""
         <div class="ind-card">
