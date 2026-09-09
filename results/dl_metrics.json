@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 {
     "model": "1D-CNN (Raw Waveforms)",
     "input_shape": [
@@ -6,4 +7,14 @@
     ],
     "test_accuracy": 0.14556962025316456,
     "test_macro_f1": 0.04702048417132216
+=======
+{
+    "model": "1D-CNN (Raw Waveforms)",
+    "input_shape": [
+        2500,
+        2
+    ],
+    "test_accuracy": 0.14556962025316456,
+    "test_macro_f1": 0.04702048417132216
+>>>>>>> 0f5abe59fe14224d6f2fe87c9f2a03a514e489fd
 }

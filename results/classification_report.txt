@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 Best Selected Model: RandomForest
 
                       precision    recall  f1-score   support
@@ -13,3 +14,20 @@ overcurrent_overload     0.9565    1.0000    0.9778        22
             accuracy                         0.9937       158
            macro avg     0.9938    0.9935    0.9935       158
         weighted avg     0.9939    0.9937    0.9937       158
+=======
+Best Selected Model: RandomForest
+
+                      precision    recall  f1-score   support
+
+  arc_fault_parallel     1.0000    0.9545    0.9767        22
+    arc_fault_series     1.0000    1.0000    1.0000        22
+ground_fault_leakage     1.0000    1.0000    1.0000        23
+ harmonic_distortion     1.0000    1.0000    1.0000        23
+              normal     1.0000    1.0000    1.0000        23
+overcurrent_overload     0.9565    1.0000    0.9778        22
+       short_circuit     1.0000    1.0000    1.0000        23
+
+            accuracy                         0.9937       158
+           macro avg     0.9938    0.9935    0.9935       158
+        weighted avg     0.9939    0.9937    0.9937       158
+>>>>>>> 0f5abe59fe14224d6f2fe87c9f2a03a514e489fd
