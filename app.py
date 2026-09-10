@@ -276,7 +276,7 @@ HAZARD_LAYMAN_MAP = {
     "normal": {
         "title": "Healthy Circuit — Normal Electricity Flow",
         "layman_reason": "Electricity is flowing cleanly and safely to your appliances without any sparking, wire overheating, or earth power leakage.",
-        "layman_symptom": "Voltage stable ~230V, Current normal within breaker rating.",
+        "layman_symptom": "Line current normal within breaker rating (<16A), stable sinusoidal waveform.",
         "safety_type": "safe",
         "safety_badge": "🟢 SAFE TO OPERATE",
         "user_action": "✅ SYSTEM SAFE: No action needed. All electrical parameters are operating within standard safety limits.",
@@ -300,7 +300,7 @@ HAZARD_LAYMAN_MAP = {
     "arc_fault_series": {
         "title": "Series Arc Fault (Loose Connection / Broken Wire Sparking)",
         "layman_reason": "A loose screw terminal in a wall socket or broken wire strand is creating invisible high-temperature electrical sparks (over 5,000°C) inside the wall.",
-        "layman_symptom": "Current flattening near zero-voltage restrike + high-frequency noise bursts (1.5-2.5 kHz).",
+        "layman_symptom": "Current shouldering near zero-crossing restrike + high-frequency noise bursts (1.5-2.5 kHz).",
         "safety_type": "critical",
         "safety_badge": "🚨 HIGH FIRE RISK — CALL ELECTRICIAN IMMEDIATELY",
         "user_action": "🚨 CRITICAL FIRE RISK: Stand back from the MCB panel! High-temperature arcing can ignite wall insulation within seconds. Unplug all devices on this branch circuit and call a licensed electrician immediately.",
@@ -484,11 +484,8 @@ if data_source_mode == "Hardware Mode (ESP32)":
                 elec = latest_data["electrical_readings"]
 
                 # Use readings from hardware API
-                voltage_v = elec.get("voltage_V", 230.0)
                 rms_current_a = elec.get("rms_line_A", 0.0) if not st.session_state.mcb_tripped else 0.0
                 active_power_w = elec.get("active_power_W", 0.0) if not st.session_state.mcb_tripped else 0.0
-                apparent_power_va = round(voltage_v * rms_current_a, 1)
-                power_factor = 0.95
                 panel_temp = 34.0
 
                 extracted_feats = {
@@ -530,10 +527,6 @@ if data_source_mode == "Simulation Mode" or not hardware_is_online:
     confidence_pct = pred_res["confidence_pct"]
     probs = pred_res["probabilities"]
 
-    # Fluctuate displayed parameters realistically around generator
-    voltage_v = round(230.0 + np.random.uniform(-1.8, 1.8), 1)
-    frequency_hz = round(50.0 + np.random.uniform(-0.09, 0.09), 2)
-
     base_temp = 31.0 + (extracted_feats["rms_line_A"] / rated_mcb_amp) * 12.0
     if active_condition in ["arc_fault_series", "arc_fault_parallel"]:
         base_temp += 18.0
@@ -543,14 +536,11 @@ if data_source_mode == "Simulation Mode" or not hardware_is_online:
 
     if st.session_state.mcb_tripped:
         rms_current_a = 0.0
-        power_factor = 1.0
         active_power_w = 0.0
-        apparent_power_va = 0.0
     else:
         rms_current_a = round(extracted_feats["rms_line_A"], 2)
-        power_factor = round(max(0.70, min(0.99, 1.0 - (extracted_feats["thd_pct"] / 150.0))), 2)
-        active_power_w = round(voltage_v * rms_current_a * power_factor, 1)
-        apparent_power_va = round(voltage_v * rms_current_a, 1)
+        power_factor_approx = max(0.70, min(0.99, 1.0 - (extracted_feats["thd_pct"] / 150.0)))
+        active_power_w = round(230.0 * rms_current_a * power_factor_approx, 1)
 
 # Constant Risk Score lookup
 risk_score, risk_tier, risk_color_class = HAZARD_CONSTANT_RISK.get(
@@ -600,10 +590,10 @@ st.session_state.cumulative_energy_kwh += (active_power_w / 1000.0) * (0.5 / 360
 # Append to History Buffer (Limit to 60 data points)
 st.session_state.history_buffer.append({
     "time": time.strftime("%I:%M:%S %p"),
-    "voltage": voltage_v,
     "current": rms_current_a,
-    "power_kw": active_power_w / 1000.0,
-    "thd": extracted_feats["thd_pct"],
+    "peak": round(extracted_feats["peak_A"] if not st.session_state.mcb_tripped else 0.0, 2),
+    "leakage": round(extracted_feats["leakage_rms_A"] if not st.session_state.mcb_tripped else 0.0, 3),
+    "thd": round(extracted_feats["thd_pct"], 1),
     "risk": risk_score,
     "confidence": confidence_pct,
 })
@@ -716,53 +706,59 @@ with tab_main:
             unsafe_allow_html=True,
         )
 
-    # Real-Time Color-Coded Electrical Readings (Continuously Changing)
+    # Real-Time Color-Coded Electrical Readings (Current Sensor Telemetry)
     c1, c2, c3, c4, c5, c6 = st.columns(6)
 
     with c1:
-        frequency_hz=50.0
         st.markdown(
             f"""
         <div class="ind-card">
-            <div class="ind-lbl">Mains Voltage</div>
-            <div class="ind-val-normal">{voltage_v} V</div>
-            <div style="font-size:0.75rem; color:#64748b;">Frequency: {frequency_hz} Hz</div>
+            <div class="ind-lbl">Line Current (RMS)</div>
+            <div class="{num_color_class}">{rms_current_a:.2f} A</div>
+            <div style="font-size:0.75rem; color:#64748b;">Breaker Rating: {rated_mcb_amp:.0f} A</div>
         </div>
         """,
             unsafe_allow_html=True,
         )
 
     with c2:
+        peak_val = 0.0 if st.session_state.mcb_tripped else extracted_feats['peak_A']
+        peak_class = "ind-val-hazard" if peak_val > 25.0 else ("ind-val-warning" if peak_val > 18.0 else num_color_class)
         st.markdown(
             f"""
         <div class="ind-card">
-            <div class="ind-lbl">Line Current</div>
-            <div class="{num_color_class}">{rms_current_a} A</div>
-            <div style="font-size:0.75rem; color:#64748b;">Peak: {extracted_feats['peak_A']:.1f} A</div>
+            <div class="ind-lbl">Peak Current</div>
+            <div class="{peak_class}">{peak_val:.2f} A</div>
+            <div style="font-size:0.75rem; color:#64748b;">Breaker Max: {rated_mcb_amp * 1.414:.1f} A</div>
         </div>
         """,
             unsafe_allow_html=True,
         )
 
     with c3:
+        leak_val = 0.0 if st.session_state.mcb_tripped else extracted_feats['leakage_rms_A']
+        leak_class = "ind-val-hazard" if leak_val > 0.05 else ("ind-val-warning" if leak_val > 0.025 else "ind-val-normal")
+        neut_val = 0.0 if st.session_state.mcb_tripped else extracted_feats['rms_neutral_A']
         st.markdown(
             f"""
         <div class="ind-card">
-            <div class="ind-lbl">Active Power</div>
-            <div class="{num_color_class}">{active_power_w:.0f} W</div>
-            <div style="font-size:0.75rem; color:#64748b;">Apparent: {apparent_power_va:.0f} VA</div>
+            <div class="ind-lbl">Earth Leakage</div>
+            <div class="{leak_class}">{leak_val:.3f} A</div>
+            <div style="font-size:0.75rem; color:#64748b;">Neutral: {neut_val:.2f} A</div>
         </div>
         """,
             unsafe_allow_html=True,
         )
 
     with c4:
+        crest_val = extracted_feats['crest_factor']
+        crest_class = "ind-val-hazard" if crest_val > 2.5 else ("ind-val-warning" if crest_val > 1.8 else "ind-val-normal")
         st.markdown(
             f"""
         <div class="ind-card">
-            <div class="ind-lbl">Power Factor</div>
-            <div class="ind-val-normal">{power_factor:.2f}</div>
-            <div style="font-size:0.75rem; color:#64748b;">Cos(φ) Efficiency</div>
+            <div class="ind-lbl">Crest Factor</div>
+            <div class="{crest_class}">{crest_val:.2f}</div>
+            <div style="font-size:0.75rem; color:#64748b;">Standard Sine: 1.41</div>
         </div>
         """,
             unsafe_allow_html=True,
@@ -772,7 +768,7 @@ with tab_main:
         st.markdown(
             f"""
         <div class="ind-card">
-            <div class="ind-lbl">THD Distortion</div>
+            <div class="ind-lbl">Current THD</div>
             <div class="{'ind-val-hazard' if extracted_feats['thd_pct'] > 15 else ('ind-val-warning' if extracted_feats['thd_pct'] > 8 else 'ind-val-normal')}">{extracted_feats['thd_pct']:.1f}%</div>
             <div style="font-size:0.75rem; color:#64748b;">H5 Ratio: {extracted_feats['h5_ratio']*100:.1f}%</div>
         </div>
@@ -864,26 +860,26 @@ with tab_main:
         fig_g, axes = plt.subplots(1, 3, figsize=(12, 3.2))
         fig_g.patch.set_facecolor("#0b0f19")
 
-        # Chart 1: Voltage & Current Trends
+        # Chart 1: Line Current (RMS & Peak) Trends
         ax1 = axes[0]
         ax1.set_facecolor("#1e293b")
-        ax1.plot(df_hist["time"], df_hist["voltage"], color="#38bdf8", label="Voltage (V)", linewidth=1.5)
-        ax1_i = ax1.twinx()
-        ax1_i.plot(df_hist["time"], df_hist["current"], color="#f87171" if num_color_class == "ind-val-hazard" else ("#fbbf24" if num_color_class == "ind-val-warning" else "#34d399"), label="Current (A)", linewidth=1.5, linestyle="--")
-        ax1.set_title("Mains Voltage & Current", color="#f8fafc", fontsize=9.5, fontweight="bold")
+        ax1.plot(df_hist["time"], df_hist["current"], color="#38bdf8", label="RMS Line (A)", linewidth=1.5)
+        ax1_peak = ax1.twinx()
+        ax1_peak.plot(df_hist["time"], df_hist["peak"], color="#f87171" if num_color_class == "ind-val-hazard" else ("#fbbf24" if num_color_class == "ind-val-warning" else "#34d399"), label="Peak (A)", linewidth=1.2, linestyle="--")
+        ax1.set_title("Line Current (RMS & Peak)", color="#f8fafc", fontsize=9.5, fontweight="bold")
         ax1.tick_params(colors="#94a3b8", labelsize=6.5)
-        ax1_i.tick_params(colors="#94a3b8", labelsize=6.5)
+        ax1_peak.tick_params(colors="#94a3b8", labelsize=6.5)
         ax1.set_xticks(ax1.get_xticks()[:: max(1, len(df_hist) // 5)])
 
-        # Chart 2: Active Power & THD %
+        # Chart 2: Current THD % & Earth Leakage (A)
         ax2 = axes[1]
         ax2.set_facecolor("#1e293b")
-        ax2.plot(df_hist["time"], df_hist["power_kw"], color="#34d399", label="Power (kW)", linewidth=1.5)
-        ax2_thd = ax2.twinx()
-        ax2_thd.plot(df_hist["time"], df_hist["thd"], color="#fbbf24", label="THD (%)", linewidth=1.2, linestyle=":")
-        ax2.set_title("Active Power (kW) & THD %", color="#f8fafc", fontsize=9.5, fontweight="bold")
+        ax2.plot(df_hist["time"], df_hist["thd"], color="#fbbf24", label="THD (%)", linewidth=1.2)
+        ax2_leak = ax2.twinx()
+        ax2_leak.plot(df_hist["time"], df_hist["leakage"], color="#34d399", label="Leakage (A)", linewidth=1.2, linestyle=":")
+        ax2.set_title("Current THD (%) & Leakage (A)", color="#f8fafc", fontsize=9.5, fontweight="bold")
         ax2.tick_params(colors="#94a3b8", labelsize=6.5)
-        ax2_thd.tick_params(colors="#94a3b8", labelsize=6.5)
+        ax2_leak.tick_params(colors="#94a3b8", labelsize=6.5)
         ax2.set_xticks(ax2.get_xticks()[:: max(1, len(df_hist) // 5)])
 
         # Chart 3: Constant Hazard Risk Score
@@ -967,7 +963,7 @@ with tab_tech:
 st.markdown(
     """
 <div class="footer-text">
-    ⚠️ <strong>DISCLAIMER:</strong> AMPIX Software Simulation Only — This application represents a software simulation of a smart household electrical monitoring device for capstone demonstration and viva evaluation. It is not connected to physical high-voltage electrical hardware.
+    ⚠️ <strong>DISCLAIMER:</strong> AMPIX Software Simulation Only — This application represents a software simulation of a smart household electrical monitoring device for capstone demonstration and viva evaluation. It is not connected to physical electrical hardware.
 </div>
 """,
     unsafe_allow_html=True,
